@@ -388,6 +388,7 @@
             currentItem = index;
             document.querySelectorAll('.item').forEach(el => el.classList.remove('active'));
             element.classList.add('active');
+            socket.emit('selectItem', index);
         }
 
         function resizeCanvas() { 
@@ -441,19 +442,88 @@
 
             for (let id in players) {
                 let p = players[id];
-                
+                const px = p.x - cameraX;
+                const py = p.y - cameraY;
+
+                // 그림자
+                ctx.fillStyle = 'rgba(0,0,0,0.2)';
+                ctx.beginPath();
+                ctx.arc(px, py + 12, 18, 0, Math.PI * 2);
+                ctx.fill();
+
+                // 농부 몸통 (멜빵바지 및 셔츠)
                 ctx.fillStyle = p.color;
-                ctx.beginPath(); ctx.arc(p.x - cameraX, p.y - cameraY, 25, 0, Math.PI * 2); ctx.fill();
-                if (id === myId) { ctx.lineWidth = 3; ctx.strokeStyle = 'white'; ctx.stroke(); }
+                ctx.beginPath();
+                ctx.roundRect ? ctx.roundRect(px - 14, py - 4, 28, 22, 6) : ctx.rect(px - 14, py - 4, 28, 22);
+                ctx.fill();
+
+                // 멜빵 끈
+                ctx.fillStyle = '#34495e';
+                ctx.fillRect(px - 8, py - 4, 5, 12);
+                ctx.fillRect(px + 3, py - 4, 5, 12);
+
+                // 머리 (얼굴)
+                ctx.fillStyle = '#f5d0b1';
+                ctx.beginPath();
+                ctx.arc(px, py - 12, 13, 0, Math.PI * 2);
+                ctx.fill();
+
+                // 짚모자
+                ctx.fillStyle = '#f1c40f';
+                ctx.beginPath();
+                ctx.ellipse(px, py - 20, 20, 6, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#d4ac0d';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                ctx.fillStyle = '#f39c12';
+                ctx.beginPath();
+                ctx.arc(px, py - 23, 11, Math.PI, 0, false);
+                ctx.fill();
+
+                // 낫을 들고 있다면 옆에 낫 그리기
+                if (p.holdingScythe) {
+                    ctx.save();
+                    ctx.translate(px + 18, py);
+                    ctx.rotate(Math.PI / 4);
+
+                    // 자루
+                    ctx.strokeStyle = '#d35400';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.moveTo(0, 12);
+                    ctx.lineTo(0, -12);
+                    ctx.stroke();
+
+                    // 날
+                    ctx.strokeStyle = '#bdc3c7';
+                    ctx.fillStyle = '#95a5a6';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(0, -12, 10, 0, Math.PI, false);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    ctx.restore();
+                }
+
+                if (id === myId) { 
+                    ctx.lineWidth = 2; 
+                    ctx.strokeStyle = 'white'; 
+                    ctx.beginPath();
+                    ctx.arc(px, py, 24, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
                 
                 ctx.fillStyle = 'white';
                 ctx.font = 'bold 15px sans-serif';
                 ctx.textAlign = 'center';
-                ctx.fillText(p.nickname, p.x - cameraX, p.y - cameraY - 75);
+                ctx.fillText(p.nickname, px, py - 45);
 
                 const hpWidth = 50; const hpHeight = 8;
-                const hpX = p.x - cameraX - (hpWidth / 2);
-                const hpY = p.y - cameraY - 45; 
+                const hpX = px - (hpWidth / 2);
+                const hpY = py - 32; 
 
                 ctx.fillStyle = 'black'; ctx.fillRect(hpX, hpY, hpWidth, hpHeight);
                 ctx.fillStyle = '#e74c3c'; ctx.fillRect(hpX, hpY, (p.hp / p.maxHp) * hpWidth, hpHeight);
@@ -462,7 +532,7 @@
                 ctx.fillStyle = 'white';
                 ctx.font = 'bold 13px sans-serif';
                 ctx.textAlign = 'center';
-                ctx.fillText(`Kills: ${p.kills} | ATK: ${p.attackPower}`, p.x - cameraX, hpY - 8);
+                ctx.fillText(`Kills: ${p.kills} | ATK: ${p.attackPower}`, px, hpY - 8);
             }
 
             for (let i = particles.length - 1; i >= 0; i--) {
