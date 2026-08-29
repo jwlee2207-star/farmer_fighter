@@ -1,9 +1,6 @@
 {
-  {
-  "name": "farmer-battle",
+  "name": "farmer-fighter",
   "version": "1.0.0",
-  "description": "Multiplayer farmer battle game",
-  "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
