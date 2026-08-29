@@ -63,7 +63,7 @@ io.on('connection', (socket) => {
             hp: 100,
             maxHp: 100,
             kills: 0,
-            attackPower: 20,
+            attackPower: 10,
             applesLeft: 2, // 사과 기본 2개
             keys: { up: false, down: false, left: false, right: false },
             targetX: null,
@@ -139,7 +139,7 @@ io.on('connection', (socket) => {
                     target.x = Math.floor(Math.random() * 1500) + 500;
                     target.y = Math.floor(Math.random() * 1500) + 500;
                     attacker.kills++;
-                    attacker.attackPower += 5;
+                    attacker.attackPower += 1;
 
                     if (attacker.kills >= 3) {
                         io.to(code).emit('gameOver', { winnerId: attacker.id, winnerName: attacker.nickname });
