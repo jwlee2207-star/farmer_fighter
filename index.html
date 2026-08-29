@@ -63,7 +63,6 @@
 <body>
 
     <div id="lobby">
-        <!-- 전체화면 버튼은 메뉴(로비)에만 표시 -->
         <button id="fullscreen-btn" style="position: fixed; top: 20px; right: 20px; z-index: 1000; padding: 12px 18px; font-size: 16px; background-color: #f1c40f; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.3);">전체화면</button>
 
         <div class="lobby-box" id="initialScreen">
@@ -419,7 +418,6 @@
                 ctx.beginPath(); ctx.moveTo(0 - cameraX, i - cameraY); ctx.lineTo(WORLD_SIZE - cameraX, i - cameraY); ctx.stroke();
             }
 
-            // 바위 그리기
             for (let rock of rocks) {
                 ctx.fillStyle = '#7f8c8d';
                 ctx.beginPath();
