@@ -68,6 +68,7 @@ io.on('connection', (socket) => {
             kills: 0,
             attackPower: 10, // 기본 공격력 10
             applesLeft: 2,   // 사과 기본 2개
+            holdingScythe: true, // 기본 낫 장착 상태
             keys: { up: false, down: false, left: false, right: false },
             targetX: null,
             targetY: null
@@ -112,6 +113,15 @@ io.on('connection', (socket) => {
         if (player) {
             player.targetX = data.x;
             player.targetY = data.y;
+        }
+    });
+
+    socket.on('selectItem', (itemIndex) => {
+        const code = socket.roomCode;
+        if (!code || !rooms[code]) return;
+        const player = rooms[code].players[socket.id];
+        if (player) {
+            player.holdingScythe = (itemIndex === 0);
         }
     });
 
@@ -284,7 +294,7 @@ setInterval(() => {
                 if (seed.grown) {
                     const dist = Math.hypot(p.x - seed.x, p.y - seed.y);
                     if (dist < 35) {
-                        p.attackPower += 1; // 식물 먹을 때 공격력 1 증가
+                        p.attackPower += 1;
                         p.hp = Math.min(p.maxHp, p.hp + 15);
                         delete room.seeds[sId];
                         io.to(code).emit('seedHarvested', { x: seed.x, y: seed.y });
