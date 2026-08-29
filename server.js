@@ -229,7 +229,7 @@ setInterval(() => {
         // 플레이어 위치 업데이트 및 충돌 검사
         for (let id in room.players) {
             let p = room.players[id];
-            const speed = 4;
+            const speed = 8;
 
             let dx = 0, dy = 0;
             if (p.keys.up) dy -= 1;
