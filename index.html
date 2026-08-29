@@ -516,23 +516,25 @@
                     ctx.stroke();
                 }
                 
-                ctx.fillStyle = 'white';
-                ctx.font = 'bold 15px sans-serif';
-                ctx.textAlign = 'center';
-                ctx.fillText(p.nickname, px, py - 45);
-
+                // === UI 요소들의 세로 위치 간격 조정 (안 겹치게 배치) ===
                 const hpWidth = 50; const hpHeight = 8;
+                const hpY = py - 48; // HP바 기준 높이
                 const hpX = px - (hpWidth / 2);
-                const hpY = py - 32; 
 
+                // HP 바 그리기
                 ctx.fillStyle = 'black'; ctx.fillRect(hpX, hpY, hpWidth, hpHeight);
                 ctx.fillStyle = '#e74c3c'; ctx.fillRect(hpX, hpY, (p.hp / p.maxHp) * hpWidth, hpHeight);
                 ctx.strokeStyle = 'black'; ctx.lineWidth = 1; ctx.strokeRect(hpX, hpY, hpWidth, hpHeight);
                 
+                // Kills & ATK 정보 (HP바 바로 위)
                 ctx.fillStyle = 'white';
-                ctx.font = 'bold 13px sans-serif';
+                ctx.font = 'bold 11px sans-serif';
                 ctx.textAlign = 'center';
-                ctx.fillText(`Kills: ${p.kills} | ATK: ${p.attackPower}`, px, hpY - 8);
+                ctx.fillText(`Kills: ${p.kills} | ATK: ${p.attackPower}`, px, hpY - 6);
+
+                // 닉네임 (가장 위)
+                ctx.font = 'bold 13px sans-serif';
+                ctx.fillText(p.nickname, px, hpY - 20);
             }
 
             for (let i = particles.length - 1; i >= 0; i--) {
