@@ -66,7 +66,7 @@ io.on('connection', (socket) => {
             hp: 100,
             maxHp: 100,
             kills: 0,
-            attackPower: 20, // 기본 공격력
+            attackPower: 10, // 기본 공격력 10
             applesLeft: 2,   // 사과 기본 2개
             keys: { up: false, down: false, left: false, right: false },
             targetX: null,
@@ -137,7 +137,7 @@ io.on('connection', (socket) => {
                     target.hp = target.maxHp;
                     target.x = Math.floor(Math.random() * 1500) + 500;
                     target.y = Math.floor(Math.random() * 1500) + 500;
-                    target.attackPower = 20; // 죽었을 때 공격력 초기화
+                    target.attackPower = 10; // 죽었을 때 기본 공격력 10으로 초기화
                     attacker.kills++;
                     attacker.attackPower += 5;
 
@@ -223,7 +223,7 @@ setInterval(() => {
 
         for (let id in room.players) {
             let p = room.players[id];
-            const speed = 9; // 이동 속도 (원하는 값으로 수정 가능)
+            const speed = 4;
 
             let dx = 0, dy = 0;
             if (p.keys.up) dy -= 1;
@@ -254,7 +254,6 @@ setInterval(() => {
                 }
             }
 
-            // X축 바위 충돌 검사
             let testX = p.x + moveX;
             let collideX = false;
             for (let rock of room.rocks) {
@@ -266,7 +265,6 @@ setInterval(() => {
             if (!collideX) p.x = testX;
             else p.targetX = null;
 
-            // Y축 바위 충돌 검사
             let testY = p.y + moveY;
             let collideY = false;
             for (let rock of room.rocks) {
@@ -286,7 +284,7 @@ setInterval(() => {
                 if (seed.grown) {
                     const dist = Math.hypot(p.x - seed.x, p.y - seed.y);
                     if (dist < 35) {
-                        p.attackPower += 3;
+                        p.attackPower += 1; // 식물 먹을 때 공격력 1 증가
                         p.hp = Math.min(p.maxHp, p.hp + 15);
                         delete room.seeds[sId];
                         io.to(code).emit('seedHarvested', { x: seed.x, y: seed.y });
