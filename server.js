@@ -6,7 +6,6 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-// 정적 파일 제공 (index.html이 같은 폴더에 있다고 가정)
 app.use(express.static(__dirname));
 
 const rooms = {};
@@ -15,7 +14,6 @@ const WORLD_SIZE = 2500;
 io.on('connection', (socket) => {
     console.log(`사용자 접속: ${socket.id}`);
 
-    // 방 참여 또는 생성
     socket.on('joinRoom', ({ code, isHost, nickname }) => {
         if (socket.roomCode) {
             leaveRoom(socket);
@@ -31,7 +29,12 @@ io.on('connection', (socket) => {
                 hostId: socket.id,
                 started: false,
                 players: {},
-                seeds: {}
+                seeds: {},
+                rocks: Array.from({ length: 15 }, () => ({
+                    x: Math.floor(Math.random() * 2100) + 200,
+                    y: Math.floor(Math.random() * 2100) + 200,
+                    radius: 40
+                }))
             };
         }
 
@@ -63,8 +66,8 @@ io.on('connection', (socket) => {
             hp: 100,
             maxHp: 100,
             kills: 0,
-            attackPower: 10,
-            applesLeft: 2, // 사과 기본 2개
+            attackPower: 20, // 기본 공격력
+            applesLeft: 2,   // 사과 기본 2개
             keys: { up: false, down: false, left: false, right: false },
             targetX: null,
             targetY: null
@@ -78,7 +81,6 @@ io.on('connection', (socket) => {
         io.to(code).emit('roomUpdated', Object.keys(room.players).length);
     });
 
-    // 게임 시작 (방장만 가능)
     socket.on('startGame', () => {
         const code = socket.roomCode;
         if (!code || !rooms[code]) return;
@@ -90,7 +92,6 @@ io.on('connection', (socket) => {
         }
     });
 
-    // 키보드 입력 처리
     socket.on('keyInput', (keys) => {
         const code = socket.roomCode;
         if (!code || !rooms[code]) return;
@@ -104,7 +105,6 @@ io.on('connection', (socket) => {
         }
     });
 
-    // 마우스 클릭 이동 처리
     socket.on('move', (data) => {
         const code = socket.roomCode;
         if (!code || !rooms[code]) return;
@@ -115,7 +115,6 @@ io.on('connection', (socket) => {
         }
     });
 
-    // 공격 처리
     socket.on('attack', () => {
         const code = socket.roomCode;
         if (!code || !rooms[code]) return;
@@ -138,8 +137,9 @@ io.on('connection', (socket) => {
                     target.hp = target.maxHp;
                     target.x = Math.floor(Math.random() * 1500) + 500;
                     target.y = Math.floor(Math.random() * 1500) + 500;
+                    target.attackPower = 20; // 죽었을 때 공격력 초기화
                     attacker.kills++;
-                    attacker.attackPower += 1;
+                    attacker.attackPower += 5;
 
                     if (attacker.kills >= 3) {
                         io.to(code).emit('gameOver', { winnerId: attacker.id, winnerName: attacker.nickname });
@@ -150,7 +150,6 @@ io.on('connection', (socket) => {
         }
     });
 
-    // 씨앗 심기 처리
     let seedIdCounter = 0;
     socket.on('plantSeed', () => {
         const code = socket.roomCode;
@@ -165,11 +164,10 @@ io.on('connection', (socket) => {
             x: player.x,
             y: player.y,
             grown: false,
-            growTime: Date.now() + 5000 // 5초 후 성장
+            growTime: Date.now() + 5000
         };
     });
 
-    // 사과 먹기 처리 (체력 30 회복, 게임당 2개 제한)
     socket.on('eatApple', () => {
         const code = socket.roomCode;
         if (!code || !rooms[code]) return;
@@ -184,7 +182,6 @@ io.on('connection', (socket) => {
         }
     });
 
-    // 연결 해제 처리
     socket.on('disconnect', () => {
         leaveRoom(socket);
         console.log(`사용자 접속 해제: ${socket.id}`);
@@ -211,13 +208,11 @@ io.on('connection', (socket) => {
     }
 });
 
-// 게임 루프 (20 FPS)
 setInterval(() => {
     for (let code in rooms) {
         const room = rooms[code];
         if (!room.started) continue;
 
-        // 씨앗 성장 상태 업데이트
         const now = Date.now();
         for (let sId in room.seeds) {
             let seed = room.seeds[sId];
@@ -226,10 +221,9 @@ setInterval(() => {
             }
         }
 
-        // 플레이어 위치 업데이트 및 충돌 검사
         for (let id in room.players) {
             let p = room.players[id];
-            const speed = 9;
+            const speed = 4; // 이동 속도 (원하는 값으로 수정 가능)
 
             let dx = 0, dy = 0;
             if (p.keys.up) dy -= 1;
@@ -237,31 +231,56 @@ setInterval(() => {
             if (p.keys.left) dx -= 1;
             if (p.keys.right) dx += 1;
 
+            let moveX = 0, moveY = 0;
             if (dx !== 0 || dy !== 0) {
                 const length = Math.hypot(dx, dy);
-                p.x += (dx / length) * speed;
-                p.y += (dy / length) * speed;
+                moveX = (dx / length) * speed;
+                moveY = (dy / length) * speed;
+                p.targetX = null;
+                p.targetY = null;
             } else if (p.targetX !== null && p.targetY !== null) {
                 const distX = p.targetX - p.x;
                 const distY = p.targetY - p.y;
                 const distance = Math.hypot(distX, distY);
 
                 if (distance > speed) {
-                    p.x += (distX / distance) * speed;
-                    p.y += (distY / distance) * speed;
+                    moveX = (distX / distance) * speed;
+                    moveY = (distY / distance) * speed;
                 } else {
-                    p.x = p.targetX;
-                    p.y = p.targetY;
+                    moveX = distX;
+                    moveY = distY;
                     p.targetX = null;
                     p.targetY = null;
                 }
             }
 
-            // 맵 경계 제한
+            // X축 바위 충돌 검사
+            let testX = p.x + moveX;
+            let collideX = false;
+            for (let rock of room.rocks) {
+                if (Math.hypot(testX - rock.x, p.y - rock.y) < 25 + rock.radius) {
+                    collideX = true;
+                    break;
+                }
+            }
+            if (!collideX) p.x = testX;
+            else p.targetX = null;
+
+            // Y축 바위 충돌 검사
+            let testY = p.y + moveY;
+            let collideY = false;
+            for (let rock of room.rocks) {
+                if (Math.hypot(p.x - rock.x, testY - rock.y) < 25 + rock.radius) {
+                    collideY = true;
+                    break;
+                }
+            }
+            if (!collideY) p.y = testY;
+            else p.targetY = null;
+
             p.x = Math.max(25, Math.min(WORLD_SIZE - 25, p.x));
             p.y = Math.max(25, Math.min(WORLD_SIZE - 25, p.y));
 
-            // 다 자란 씨앗 수확(밟기) 처리
             for (let sId in room.seeds) {
                 let seed = room.seeds[sId];
                 if (seed.grown) {
@@ -276,10 +295,10 @@ setInterval(() => {
             }
         }
 
-        // 상태 브로드캐스트
         io.to(code).emit('stateUpdate', {
             players: room.players,
-            seeds: room.seeds
+            seeds: room.seeds,
+            rocks: room.rocks
         });
     }
 }, 1000 / 20);
