@@ -223,7 +223,7 @@ setInterval(() => {
 
         for (let id in room.players) {
             let p = room.players[id];
-            const speed = 4; // 이동 속도 (원하는 값으로 수정 가능)
+            const speed = 9; // 이동 속도 (원하는 값으로 수정 가능)
 
             let dx = 0, dy = 0;
             if (p.keys.up) dy -= 1;
