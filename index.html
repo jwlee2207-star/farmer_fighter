@@ -62,6 +62,9 @@
 </head>
 <body>
 
+    <!-- 전체화면 버튼 추가 -->
+    <button id="fullscreen-btn" style="position: absolute; top: 20px; right: 20px; z-index: 1000; padding: 12px 18px; font-size: 16px; background-color: #f1c40f; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.3);">전체화면</button>
+
     <div id="lobby">
         <div class="lobby-box" id="initialScreen">
             <h2>🌾 농부 전투</h2>
@@ -106,6 +109,22 @@
     </div>
 
     <script>
+        // 전체화면 토글 기능 추가
+        const fullscreenBtn = document.getElementById('fullscreen-btn');
+        if (fullscreenBtn) {
+            fullscreenBtn.addEventListener('click', () => {
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen().catch(err => {
+                        console.log(`전체화면 전환 실패: ${err.message}`);
+                    });
+                } else {
+                    if (document.exitFullscreen) {
+                        document.exitFullscreen();
+                    }
+                }
+            });
+        }
+
         const socket = io();
         const lobby = document.getElementById('lobby');
         const initialScreen = document.getElementById('initialScreen');
@@ -378,7 +397,6 @@
                 ctx.beginPath(); ctx.arc(p.x - cameraX, p.y - cameraY, 25, 0, Math.PI * 2); ctx.fill();
                 if (id === myId) { ctx.lineWidth = 3; ctx.strokeStyle = 'white'; ctx.stroke(); }
                 
-                // 🌟 닉네임 위치를 위로 올림 (-75)
                 ctx.fillStyle = 'white';
                 ctx.font = 'bold 15px sans-serif';
                 ctx.textAlign = 'center';
