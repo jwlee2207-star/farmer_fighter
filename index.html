@@ -20,7 +20,7 @@
         canvas { display: block; }
         
         #itemBar { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; background: rgba(0,0,0,0.6); padding: 10px; border-radius: 10px; }
-        .item { width: 60px; height: 60px; background-color: white; border-radius: 10px; display: flex; justify-content: center; align-items: center; font-size: 14px; font-weight: bold; border: 3px solid transparent; cursor: pointer; }
+        .item { width: 60px; height: 60px; background-color: white; border-radius: 10px; display: flex; flex-direction: column; justify-content: center; align-items: center; font-size: 13px; font-weight: bold; border: 3px solid transparent; cursor: pointer; text-align: center; color: #333; line-height: 1.2; }
         .item.active { border-color: #e74c3c; background-color: #ffd700; }
         
         #roomInfo { position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.5); color: white; padding: 10px; border-radius: 8px; font-weight: bold; }
@@ -63,7 +63,6 @@
 <body>
 
     <div id="lobby">
-        <!-- 전체화면 버튼을 로비 안에 배치하여 게임이 시작되면 자동으로 사라지도록 함 -->
         <button id="fullscreen-btn" style="position: fixed; top: 20px; right: 20px; z-index: 1000; padding: 12px 18px; font-size: 16px; background-color: #f1c40f; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.3);">전체화면</button>
 
         <div class="lobby-box" id="initialScreen">
@@ -89,7 +88,7 @@
 
     <div id="gameContainer">
         <div id="roomInfo">방 코드: <span id="displayCode">-</span></div>
-        <div id="combatGuide">Space: 공격 | F: 씨앗 심기</div>
+        <div id="combatGuide">Space: 행동 | F: 씨앗 심기</div>
         <canvas id="gameCanvas"></canvas>
         
         <div id="gameOverScreen">
@@ -101,11 +100,11 @@
         <div id="itemBar">
             <div class="item active" onclick="selectItem(0, this)">낫</div>
             <div class="item" onclick="selectItem(1, this)">씨앗</div>
-            <div class="item" onclick="selectItem(2, this)">사과</div>
+            <div class="item" id="appleItem" onclick="selectItem(2, this)">사과<br>(2/2)</div>
         </div>
 
         <div id="plantBtn">심기(F)</div>
-        <div id="actionBtn">공격!</div>
+        <div id="actionBtn">행동</div>
     </div>
 
     <script>
@@ -140,6 +139,7 @@
         let isMyRoomHost = false; 
         let currentItem = 0; 
         let isGameOver = false;
+        let applesRemaining = 2;
 
         const keys = { w: false, a: false, s: false, d: false, ArrowUp: false, ArrowLeft: false, ArrowDown: false, ArrowRight: false };
         let particles = []; 
@@ -178,6 +178,13 @@
                 gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
                 gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
                 osc.start(); osc.stop(audioCtx.currentTime + 0.15);
+            } else if (type === 'eat') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(300, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(600, audioCtx.currentTime + 0.1);
+                gainNode.gain.setValueAtTime(0.4, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.1);
             }
         }
 
@@ -231,6 +238,8 @@
 
         socket.on('gameStarted', () => {
             lobby.style.display = 'none'; gameContainer.style.display = 'block';
+            applesRemaining = 2;
+            updateAppleUI();
             resizeCanvas(); gameLoop();
         });
 
@@ -280,9 +289,38 @@
             seeds = data.seeds || {};
         });
 
-        function triggerAttack() {
+        function handleAction() {
             if (isGameOver) return;
-            if (currentItem === 0) socket.emit('attack');
+            if (currentItem === 0) {
+                socket.emit('attack');
+            } else if (currentItem === 2) {
+                eatApple();
+            }
+        }
+
+        function eatApple() {
+            if (applesRemaining <= 0) {
+                alert("사과를 모두 다 먹었습니다!");
+                return;
+            }
+            socket.emit('eatApple');
+            applesRemaining--;
+            updateAppleUI();
+            playSound('eat');
+
+            if (myId && players[myId]) {
+                let p = players[myId];
+                for(let i=0; i<12; i++) {
+                    particles.push({ x: p.x, y: p.y, vx: (Math.random()-0.5)*10, vy: (Math.random()-0.5)*10, life: 1.0, color: '#2ecc71', size: 5 });
+                }
+            }
+        }
+
+        function updateAppleUI() {
+            const appleItemEl = document.getElementById('appleItem');
+            if (appleItemEl) {
+                appleItemEl.innerHTML = `사과<br>(${applesRemaining}/2)`;
+            }
         }
 
         let isPlantCooldown = false;
@@ -316,12 +354,12 @@
             }
         }
 
-        document.getElementById('actionBtn').addEventListener('pointerdown', (e) => { e.stopPropagation(); triggerAttack(); });
+        document.getElementById('actionBtn').addEventListener('pointerdown', (e) => { e.stopPropagation(); handleAction(); });
         document.getElementById('plantBtn').addEventListener('pointerdown', (e) => { e.stopPropagation(); triggerPlant(); });
 
         window.addEventListener('keydown', (e) => {
             if (isGameOver) return; 
-            if (e.code === 'Space') triggerAttack();
+            if (e.code === 'Space') handleAction();
             if (e.code === 'KeyF' || e.code === 'KeyE') triggerPlant();
             if (keys.hasOwnProperty(e.key) && !keys[e.key]) { keys[e.key] = true; sendKeyInput(); }
         });
