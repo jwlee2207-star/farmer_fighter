@@ -2,421 +2,86 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>농부 전투 멀티플레이</title>
-    <script src="/socket.io/socket.io.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>농부 파이터</title>
     <style>
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #7bc04b; font-family: sans-serif; user-select: none; touch-action: none; }
-        
-        #lobby { display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; color: white; background: linear-gradient(135deg, #11998e, #38ef7d); }
-        .lobby-box { background: rgba(0,0,0,0.5); padding: 40px; border-radius: 15px; text-align: center; box-shadow: 0 10px 20px rgba(0,0,0,0.2); }
-        input, button { padding: 15px; margin: 10px; font-size: 18px; border-radius: 8px; border: none; }
-        button { background-color: #f1c40f; font-weight: bold; cursor: pointer; transition: 0.2s; }
-        button:hover { background-color: #f39c12; }
-        .disabled-btn { background-color: #95a5a6 !important; cursor: not-allowed !important; color: #ecf0f1; }
-        
-        #waitingRoom { display: none; }
-        #gameContainer { display: none; width: 100%; height: 100%; position: relative; }
-        canvas { display: block; }
-        
-        #itemBar { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; background: rgba(0,0,0,0.6); padding: 10px; border-radius: 10px; }
-        .item { width: 60px; height: 60px; background-color: white; border-radius: 10px; display: flex; justify-content: center; align-items: center; font-size: 14px; font-weight: bold; border: 3px solid transparent; cursor: pointer; }
-        .item.active { border-color: #e74c3c; background-color: #ffd700; }
-        
-        #roomInfo { position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.5); color: white; padding: 10px; border-radius: 8px; font-weight: bold; }
-        #combatGuide { position: absolute; top: 10px; right: 10px; background: rgba(231, 76, 60, 0.8); color: white; padding: 10px; border-radius: 8px; font-weight: bold; }
-        
-        #gameOverScreen {
-            display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            background: rgba(0,0,0,0.85); color: white; padding: 50px; border-radius: 20px; text-align: center; box-shadow: 0 0 30px rgba(0,0,0,0.5);
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #1a1a1a;
+            color: #ffffff;
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
         }
-        #gameOverTitle { font-size: 40px; margin: 0 0 10px 0; }
-        #gameOverSub { font-size: 18px; margin-bottom: 30px; color: #bdc3c7; }
-
-        #actionBtn {
-            position: absolute; bottom: 30px; right: 30px; width: 80px; height: 80px;
-            background-color: rgba(231, 76, 60, 0.8); color: white; font-size: 18px; font-weight: bold;
-            border-radius: 50%; border: 4px solid rgba(255,255,255,0.5);
-            display: flex; justify-content: center; align-items: center;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.3); cursor: pointer; user-select: none;
+        #menu-screen {
+            position: relative;
+            text-align: center;
+            background: #2c2c2c;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 6px 15px rgba(0,0,0,0.6);
+            width: 320px;
         }
-        #actionBtn:active { background-color: rgba(192, 57, 43, 1); transform: scale(0.95); }
-
-        #plantBtn {
-            position: absolute; bottom: 30px; right: 130px; width: 80px; height: 80px;
-            background-color: rgba(46, 204, 113, 0.8); color: white; font-size: 18px; font-weight: bold;
-            border-radius: 50%; border: 4px solid rgba(255,255,255,0.5);
-            display: flex; justify-content: center; align-items: center;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.3); cursor: pointer; user-select: none;
-            transition: 0.2s;
+        h1 {
+            margin-bottom: 25px;
+            color: #ffcc00;
         }
-        #plantBtn:active { background-color: rgba(39, 174, 96, 1); transform: scale(0.95); }
-        
-        #plantBtn.cooldown {
-            background-color: #7f8c8d !important;
-            border-color: #bdc3c7;
-            cursor: not-allowed;
-            transform: scale(1);
+        .game-btn {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            margin: 12px 0;
+            font-size: 18px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .game-btn:hover {
+            background-color: #45a049;
         }
     </style>
 </head>
 <body>
 
-    <div id="lobby">
-        <div class="lobby-box" id="initialScreen">
-            <h2>🌾 농부 전투</h2>
-            
-            <input type="text" id="nicknameInput" placeholder="닉네임 입력 (필수)" maxlength="8">
-            <br>
-            
-            <button onclick="joinServer('create')">방 만들기 (방장)</button>
-            <br><hr style="border-color: rgba(255,255,255,0.2);"><br>
-            <input type="text" id="joinCode" placeholder="방 코드 입력">
-            <button onclick="joinServer('join')">참여하기 (최대 3명)</button>
-        </div>
-
-        <div class="lobby-box" id="waitingRoom">
-            <h2>대기실</h2>
-            <h1 style="color: #f1c40f; letter-spacing: 3px;">방 코드: <span id="waitCode">0000</span></h1>
-            <p style="font-size: 20px;">현재 인원: <b id="playerCount">1</b>명 / 3명</p>
-            <p id="waitMessage" style="color: #ecf0f1; font-size: 14px;">2명 이상 모이면 시작할 수 있습니다.</p>
-            <button id="startBtn" class="disabled-btn" onclick="requestStartGame()" disabled>게임 시작</button>
-        </div>
-    </div>
-
-    <div id="gameContainer">
-        <div id="roomInfo">방 코드: <span id="displayCode">-</span></div>
-        <div id="combatGuide">Space: 공격 | F: 씨앗 심기</div>
-        <canvas id="gameCanvas"></canvas>
+    <!-- 메뉴 화면 영역 -->
+    <div id="menu-screen">
+        <!-- 전체화면 버튼 (우측 상단 배치) -->
+        <button id="fullscreen-btn" style="position: absolute; top: 15px; right: 15px; padding: 6px 10px; font-size: 12px; cursor: pointer; background-color: #ffcc00; border: none; border-radius: 4px; font-weight: bold; color: #000;">전체화면</button>
         
-        <div id="gameOverScreen">
-            <h1 id="gameOverTitle">결과</h1>
-            <p id="gameOverSub">내용</p>
-            <button onclick="location.reload()" style="background-color: #3498db; width: 100%;">로비로 돌아가기</button>
-        </div>
-
-        <div id="itemBar">
-            <div class="item active" onclick="selectItem(0, this)">낫</div>
-            <div class="item" onclick="selectItem(1, this)">씨앗</div>
-            <div class="item" onclick="selectItem(2, this)">사과</div>
-        </div>
-
-        <div id="plantBtn">심기(F)</div>
-        <div id="actionBtn">공격!</div>
+        <h1>농부 파이터</h1>
+        <button class="game-btn" onclick="startGame()">게임 시작</button>
     </div>
 
     <script>
-        const socket = io();
-        const lobby = document.getElementById('lobby');
-        const initialScreen = document.getElementById('initialScreen');
-        const waitingRoom = document.getElementById('waitingRoom');
-        const gameContainer = document.getElementById('gameContainer');
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
+        // 전체화면 토글 기능
+        const fullscreenBtn = document.getElementById('fullscreen-btn');
 
-        const WORLD_SIZE = 2500;
-        let cameraX = 0, cameraY = 0;
-        let myId = null;
-        let players = {};
-        let seeds = {}; 
-        let isMyRoomHost = false; 
-        let currentItem = 0; 
-        let isGameOver = false;
-
-        const keys = { w: false, a: false, s: false, d: false, ArrowUp: false, ArrowLeft: false, ArrowDown: false, ArrowRight: false };
-        let particles = []; 
-
-        let audioCtx;
-        function initAudio() {
-            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-        }
-
-        function playSound(type) {
-            if (!audioCtx) return;
-            const osc = audioCtx.createOscillator();
-            const gainNode = audioCtx.createGain();
-            osc.connect(gainNode);
-            gainNode.connect(audioCtx.destination);
-            
-            if (type === 'swing') {
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(800, audioCtx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.1);
-                gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
-                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
-                osc.start(); osc.stop(audioCtx.currentTime + 0.1);
-            } else if (type === 'hit') {
-                osc.type = 'square';
-                osc.frequency.setValueAtTime(150, audioCtx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.2);
-                gainNode.gain.setValueAtTime(0.5, audioCtx.currentTime);
-                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
-                osc.start(); osc.stop(audioCtx.currentTime + 0.2);
-            } else if (type === 'harvest') {
-                osc.type = 'triangle';
-                osc.frequency.setValueAtTime(400, audioCtx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.15);
-                gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
-                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
-                osc.start(); osc.stop(audioCtx.currentTime + 0.15);
-            }
-        }
-
-        function joinServer(action) {
-            const nickname = document.getElementById('nicknameInput').value.trim();
-            if (!nickname) {
-                alert("게임에서 사용할 닉네임을 먼저 입력해주세요!");
-                return;
-            }
-
-            initAudio();
-            let code = ''; let isHost = false;
-            
-            if (action === 'create') {
-                isHost = true; isMyRoomHost = true; code = Math.floor(1000 + Math.random() * 9000).toString();
+        fullscreenBtn.addEventListener('click', () => {
+            if (!document.fullscreenElement) {
+                // 전체화면 켜기
+                document.documentElement.requestFullscreen().catch(err => {
+                    console.log(`전체화면 전환 실패: ${err.message}`);
+                });
             } else {
-                code = document.getElementById('joinCode').value;
-                if (!code) return alert('참여할 방 코드를 입력하세요!');
-                isMyRoomHost = false;
-            }
-            
-            socket.emit('joinRoom', { code: code, isHost: isHost, nickname: nickname });
-        }
-
-        socket.on('joined', (data) => {
-            myId = data.id;
-            initialScreen.style.display = 'none'; waitingRoom.style.display = 'block';
-            document.getElementById('waitCode').innerText = data.code;
-            document.getElementById('displayCode').innerText = data.code;
-            if (!data.isHost) {
-                document.getElementById('startBtn').style.display = 'none';
-                document.getElementById('waitMessage').innerText = "방장이 게임을 시작할 때까지 대기해 주세요...";
-            }
-        });
-
-        socket.on('roomUpdated', (count) => {
-            document.getElementById('playerCount').innerText = count;
-            if (isMyRoomHost) {
-                const startBtn = document.getElementById('startBtn');
-                if (count >= 2) {
-                    startBtn.disabled = false; startBtn.classList.remove('disabled-btn');
-                    document.getElementById('waitMessage').innerText = "모든 준비가 완료되었습니다!";
-                } else {
-                    startBtn.disabled = true; startBtn.classList.add('disabled-btn');
-                    document.getElementById('waitMessage').innerText = "2명 이상 모이면 시작할 수 있습니다.";
+                // 전체화면 끄기
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
                 }
             }
         });
 
-        function requestStartGame() { if (isMyRoomHost) socket.emit('startGame'); }
-
-        socket.on('gameStarted', () => {
-            lobby.style.display = 'none'; gameContainer.style.display = 'block';
-            resizeCanvas(); gameLoop();
-        });
-
-        socket.on('gameOver', (data) => {
-            isGameOver = true; 
-            const gameOverScreen = document.getElementById('gameOverScreen');
-            const gameOverTitle = document.getElementById('gameOverTitle');
-            const gameOverSub = document.getElementById('gameOverSub');
-
-            gameOverScreen.style.display = 'block'; 
-
-            if (data.winnerId === myId) {
-                gameOverTitle.innerText = "🏆 승리! 🏆";
-                gameOverTitle.style.color = "#f1c40f"; 
-                gameOverSub.innerText = "가장 먼저 3킬을 달성했습니다!";
-            } else {
-                gameOverTitle.innerText = "💀 패배 💀";
-                gameOverTitle.style.color = "#e74c3c"; 
-                gameOverSub.innerText = `[${data.winnerName}] 님이 먼저 3킬을 달성했습니다...`;
-            }
-        });
-
-        socket.on('playerSwung', (data) => {
-            playSound('swing');
-            for(let i=0; i<8; i++) {
-                particles.push({ x: data.x, y: data.y, vx: (Math.random()-0.5)*15, vy: (Math.random()-0.5)*15, life: 1.0, color: 'white', size: 4 });
-            }
-        });
-
-        socket.on('playerHit', (data) => {
-            playSound('hit');
-            for(let i=0; i<15; i++) {
-                particles.push({ x: data.x, y: data.y, vx: (Math.random()-0.5)*20, vy: (Math.random()-0.5)*20, life: 1.0, color: '#e74c3c', size: 6 });
-            }
-        });
-
-        socket.on('seedHarvested', (data) => {
-            playSound('harvest');
-            for(let i=0; i<10; i++) {
-                particles.push({ x: data.x, y: data.y, vx: (Math.random()-0.5)*12, vy: (Math.random()-0.5)*12, life: 1.0, color: '#f1c40f', size: 5 });
-            }
-        });
-
-        socket.on('errorMsg', (msg) => { alert(msg); });
-        socket.on('stateUpdate', (data) => {
-            players = data.players;
-            seeds = data.seeds || {};
-        });
-
-        function triggerAttack() {
-            if (isGameOver) return;
-            if (currentItem === 0) socket.emit('attack');
+        // 게임 시작 버튼을 눌렀을 때 실행될 함수
+        function startGame() {
+            // 여기에 원래 만드셨던 게임 시작 코드를 넣으시면 됩니다.
+            alert('게임을 시작합니다!');
         }
-
-        let isPlantCooldown = false;
-
-        function triggerPlant() {
-            if (isGameOver) return;
-            
-            if (currentItem === 1) { 
-                if (isPlantCooldown) return; 
-                
-                socket.emit('plantSeed');
-
-                isPlantCooldown = true;
-                const plantBtn = document.getElementById('plantBtn');
-                plantBtn.classList.add('cooldown');
-                
-                let timeLeft = 7;
-                plantBtn.innerText = timeLeft; 
-
-                const cooldownInterval = setInterval(() => {
-                    timeLeft -= 1;
-                    if (timeLeft > 0) {
-                        plantBtn.innerText = timeLeft;
-                    } else {
-                        clearInterval(cooldownInterval);
-                        isPlantCooldown = false;
-                        plantBtn.classList.remove('cooldown');
-                        plantBtn.innerText = '심기(F)';
-                    }
-                }, 1000);
-            }
-        }
-
-        document.getElementById('actionBtn').addEventListener('pointerdown', (e) => { e.stopPropagation(); triggerAttack(); });
-        document.getElementById('plantBtn').addEventListener('pointerdown', (e) => { e.stopPropagation(); triggerPlant(); });
-
-        window.addEventListener('keydown', (e) => {
-            if (isGameOver) return; 
-            if (e.code === 'Space') triggerAttack();
-            if (e.code === 'KeyF' || e.code === 'KeyE') triggerPlant();
-            if (keys.hasOwnProperty(e.key) && !keys[e.key]) { keys[e.key] = true; sendKeyInput(); }
-        });
-
-        window.addEventListener('keyup', (e) => {
-            if (isGameOver) return;
-            if (keys.hasOwnProperty(e.key)) { keys[e.key] = false; sendKeyInput(); }
-        });
-
-        function sendKeyInput() {
-            if (!myId || isGameOver) return;
-            const up = keys.w || keys.ArrowUp; const down = keys.s || keys.ArrowDown;
-            const left = keys.a || keys.ArrowLeft; const right = keys.d || keys.ArrowRight;
-            socket.emit('keyInput', { up, down, left, right });
-        }
-
-        canvas.addEventListener('pointerdown', (e) => {
-            if (!myId || !players[myId] || isGameOver) return;
-            const targetX = e.clientX + cameraX; const targetY = e.clientY + cameraY;
-            socket.emit('move', { x: targetX, y: targetY });
-        });
-
-        function selectItem(index, element) {
-            currentItem = index;
-            document.querySelectorAll('.item').forEach(el => el.classList.remove('active'));
-            element.classList.add('active');
-        }
-
-        function resizeCanvas() { 
-            canvas.width = window.innerWidth; 
-            canvas.height = window.innerHeight; 
-        }
-        window.addEventListener('resize', resizeCanvas);
-
-        function draw() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            if (canvas.width === 0 || canvas.height === 0) resizeCanvas();
-
-            if (myId && players[myId]) {
-                cameraX = players[myId].x - canvas.width / 2; 
-                cameraY = players[myId].y - canvas.height / 2;
-                cameraX = Math.max(0, Math.min(cameraX, WORLD_SIZE - canvas.width));
-                cameraY = Math.max(0, Math.min(cameraY, WORLD_SIZE - canvas.height));
-            } else {
-                cameraX = WORLD_SIZE / 2 - canvas.width / 2;
-                cameraY = WORLD_SIZE / 2 - canvas.height / 2;
-            }
-
-            ctx.strokeStyle = 'rgba(0, 0, 0, 0.1)';
-            ctx.lineWidth = 1;
-            for (let i = 0; i <= WORLD_SIZE; i += 100) {
-                ctx.beginPath(); ctx.moveTo(i - cameraX, 0 - cameraY); ctx.lineTo(i - cameraX, WORLD_SIZE - cameraY); ctx.stroke();
-                ctx.beginPath(); ctx.moveTo(0 - cameraX, i - cameraY); ctx.lineTo(WORLD_SIZE - cameraX, i - cameraY); ctx.stroke();
-            }
-
-            for (let seedId in seeds) {
-                let s = seeds[seedId];
-                ctx.fillStyle = s.grown ? '#f1c40f' : '#8e44ad'; 
-                ctx.beginPath();
-                ctx.arc(s.x - cameraX, s.y - cameraY, s.grown ? 14 : 8, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.strokeStyle = 'white';
-                ctx.lineWidth = 2;
-                ctx.stroke();
-            }
-
-            for (let id in players) {
-                let p = players[id];
-                
-                ctx.fillStyle = p.color;
-                ctx.beginPath(); ctx.arc(p.x - cameraX, p.y - cameraY, 25, 0, Math.PI * 2); ctx.fill();
-                if (id === myId) { ctx.lineWidth = 3; ctx.strokeStyle = 'white'; ctx.stroke(); }
-                
-                // 🌟 닉네임 위치를 위로 올림 (-75)
-                ctx.fillStyle = 'white';
-                ctx.font = 'bold 15px sans-serif';
-                ctx.textAlign = 'center';
-                ctx.fillText(p.nickname, p.x - cameraX, p.y - cameraY - 75);
-
-                const hpWidth = 50; const hpHeight = 8;
-                const hpX = p.x - cameraX - (hpWidth / 2);
-                const hpY = p.y - cameraY - 45; 
-
-                ctx.fillStyle = 'black'; ctx.fillRect(hpX, hpY, hpWidth, hpHeight);
-                ctx.fillStyle = '#e74c3c'; ctx.fillRect(hpX, hpY, (p.hp / p.maxHp) * hpWidth, hpHeight);
-                ctx.strokeStyle = 'black'; ctx.lineWidth = 1; ctx.strokeRect(hpX, hpY, hpWidth, hpHeight);
-                
-                ctx.fillStyle = 'white';
-                ctx.font = 'bold 13px sans-serif';
-                ctx.textAlign = 'center';
-                ctx.fillText(`Kills: ${p.kills} | ATK: ${p.attackPower}`, p.x - cameraX, hpY - 8);
-            }
-
-            for (let i = particles.length - 1; i >= 0; i--) {
-                let p = particles[i];
-                p.x += p.vx; p.y += p.vy; 
-                p.life -= 0.05; 
-
-                if (p.life <= 0) {
-                    particles.splice(i, 1); 
-                } else {
-                    ctx.globalAlpha = p.life; 
-                    ctx.fillStyle = p.color;
-                    ctx.beginPath();
-                    ctx.arc(p.x - cameraX, p.y - cameraY, p.size * p.life, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.globalAlpha = 1.0; 
-                }
-            }
-        }
-
-        function gameLoop() { draw(); requestAnimationFrame(gameLoop); }
     </script>
 </body>
 </html>
