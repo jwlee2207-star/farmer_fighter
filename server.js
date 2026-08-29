@@ -233,7 +233,7 @@ setInterval(() => {
 
         for (let id in room.players) {
             let p = room.players[id];
-            const speed = 4;
+            const speed = 9;
 
             let dx = 0, dy = 0;
             if (p.keys.up) dy -= 1;
