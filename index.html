@@ -137,7 +137,7 @@
 
         const keys = { w: false, a: false, s: false, d: false, ArrowUp: false, ArrowLeft: false, ArrowDown: false, ArrowRight: false };
         let particles = []; 
-        let swingTimers = {}; // 💥 플레이어들의 낫 애니메이션 타이머 저장 객체
+        let swingTimers = {}; 
 
         let audioCtx;
         function initAudio() {
@@ -232,11 +232,8 @@
             }
         });
 
-        // 💥 다른 사람이 휘두른 이벤트를 받아 상대방 애니메이션 시작
         socket.on('playerSwung', (data) => {
             playSound('swing');
-            
-            // 좌표를 비교하여 휘두른 사람 찾기
             let closestId = null;
             let minDist = Infinity;
             for (let id in players) {
@@ -246,7 +243,6 @@
                     closestId = id;
                 }
             }
-            // 찾은 사람이 나 자신이 아닐 경우에만 애니메이션 실행 (나는 로컬에서 즉시 실행하니까)
             if (closestId && closestId !== myId) {
                 swingTimers[closestId] = Date.now();
             }
@@ -271,12 +267,11 @@
         socket.on('errorMsg', (msg) => { alert(msg); });
         socket.on('stateUpdate', (data) => { players = data.players; seeds = data.seeds || {}; rocks = data.rocks || []; });
 
-        // 💥 내가 공격할 때 낫 애니메이션 시작
         function handleAction() {
             if (isGameOver) return;
             if (currentItem === 0) {
                 socket.emit('attack');
-                if (myId) swingTimers[myId] = Date.now(); // 스페이스 누르는 즉시 애니메이션 타이머 기록
+                if (myId) swingTimers[myId] = Date.now(); 
             } else if (currentItem === 2) {
                 eatApple();
             }
@@ -392,40 +387,35 @@
                 ctx.strokeStyle = '#d4ac0d'; ctx.lineWidth = 2; ctx.stroke();
                 ctx.fillStyle = '#f39c12'; ctx.beginPath(); ctx.arc(px, py - 23, 11, Math.PI, 0, false); ctx.fill();
 
-                // 💥 낫 그리기 및 휙휙 휘두르는 애니메이션 적용
                 if (p.holdingScythe) {
                     ctx.save();
                     
-                    let angle = Math.PI / 4; // 평상시 각도 (45도 대기자세)
+                    let angle = Math.PI / 4; 
                     
-                    // 타이머가 작동 중이면 애니메이션 실행 (0.2초 동안)
+                    // 💥 애니메이션 지속 시간을 400ms로 늘려 2배 느리고 부드럽게 휘두르도록 변경
                     if (swingTimers[id]) {
                         let elapsed = Date.now() - swingTimers[id];
-                        if (elapsed < 200) { 
-                            let progress = elapsed / 200;
-                            // Math.sin(0~PI)를 사용해 앞으로 부드럽게 눕혔다가 다시 제자리로 돌아오게 계산
+                        if (elapsed < 400) { 
+                            let progress = elapsed / 400;
                             angle = (Math.PI / 4) - Math.sin(progress * Math.PI) * 2.2;
                         }
                     }
 
-                    // 회전축을 손잡이 아래쪽(캐릭터 손 근처)으로 맞추기
                     ctx.translate(px + 18, py + 4);
                     ctx.rotate(angle);
 
-                    // 낫 자루 그리기
                     ctx.strokeStyle = '#d35400';
                     ctx.lineWidth = 3;
                     ctx.beginPath();
-                    ctx.moveTo(0, 6);   // 손으로 잡는 위치
-                    ctx.lineTo(0, -18); // 낫 날이 달린 위치
+                    ctx.moveTo(0, 6);   
+                    ctx.lineTo(0, -18); 
                     ctx.stroke();
 
-                    // 낫 날 그리기
                     ctx.strokeStyle = '#bdc3c7';
                     ctx.fillStyle = '#95a5a6';
                     ctx.lineWidth = 2;
                     ctx.beginPath();
-                    ctx.arc(0, -18, 10, 0, Math.PI, false); // 회전 방향 맞춰서 부채꼴 그리기
+                    ctx.arc(0, -18, 10, 0, Math.PI, false); 
                     ctx.fill();
                     ctx.stroke();
 
