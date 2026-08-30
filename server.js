@@ -149,7 +149,7 @@ io.on('connection', (socket) => {
                     target.y = Math.floor(Math.random() * 1500) + 500;
                     target.attackPower = 10; // 죽었을 때 기본 공격력 10으로 초기화
                     attacker.kills++;
-                    attacker.attackPower += 5;
+                    attacker.attackPower += 0;
 
                     if (attacker.kills >= 3) {
                         io.to(code).emit('gameOver', { winnerId: attacker.id, winnerName: attacker.nickname });
