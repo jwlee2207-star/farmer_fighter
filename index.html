@@ -98,6 +98,10 @@
         </div>
 
         <div id="itemBar">
+            <div class="item active" id="item0" onclick="selectItem(0, this)"><span style="font-size:10px; color:#777;">[1]</span><br>낫</div>
+            <div class="item" id="item1" onclick="selectItem(1, this)"><span style="font-size:10px; color:#777;">[2]</span><br>씨앗</div>
+            <div class="item" id="appleItem" onclick="selectItem(2, this)"><span style="font-size:10px; color:#777;">[3]</span><br>사과<br>(2/2)</div>
+        </div>
             <div class="item active" onclick="selectItem(0, this)">낫</div>
             <div class="item" onclick="selectItem(1, this)">씨앗</div>
             <div class="item" id="appleItem" onclick="selectItem(2, this)">사과<br>(2/2)</div>
@@ -359,8 +363,25 @@
         document.getElementById('actionBtn').addEventListener('pointerdown', (e) => { e.stopPropagation(); handleAction(); });
         document.getElementById('plantBtn').addEventListener('pointerdown', (e) => { e.stopPropagation(); triggerPlant(); });
 
+       // 사과 개수 업데이트 함수 (단축키 텍스트가 지워지지 않도록 수정)
+        function updateAppleUI() {
+            const appleItemEl = document.getElementById('appleItem');
+            if (appleItemEl) {
+                appleItemEl.innerHTML = `<span style="font-size:10px; color:#777;">[3]</span><br>사과<br>(${applesRemaining}/2)`;
+            }
+        }
+
+        // --- (중략) ---
+
+        // 키보드 눌림 이벤트
         window.addEventListener('keydown', (e) => {
             if (isGameOver) return; 
+
+            // 키보드 1, 2, 3번을 누르면 해당 슬롯 선택되게 추가!
+            if (e.key === '1') selectItem(0, document.getElementById('item0'));
+            if (e.key === '2') selectItem(1, document.getElementById('item1'));
+            if (e.key === '3') selectItem(2, document.getElementById('appleItem'));
+
             if (e.code === 'Space') handleAction();
             if (e.code === 'KeyF' || e.code === 'KeyE') triggerPlant();
             if (keys.hasOwnProperty(e.key) && !keys[e.key]) { keys[e.key] = true; sendKeyInput(); }
