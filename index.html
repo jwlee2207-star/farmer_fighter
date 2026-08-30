@@ -67,10 +67,7 @@
 
         <div class="lobby-box" id="initialScreen">
             <h2>🌾 농부 전투</h2>
-            
-            <input type="text" id="nicknameInput" placeholder="닉네임 입력 (필수)" maxlength="8">
-            <br>
-            
+            <input type="text" id="nicknameInput" placeholder="닉네임 입력 (필수)" maxlength="8"><br>
             <button onclick="joinServer('create')">방 만들기 (방장)</button>
             <br><hr style="border-color: rgba(255,255,255,0.2);"><br>
             <input type="text" id="joinCode" placeholder="방 코드 입력">
@@ -88,7 +85,7 @@
 
     <div id="gameContainer">
         <div id="roomInfo">방 코드: <span id="displayCode">-</span></div>
-        <div id="combatGuide">Space: 행동 | F: 씨앗 심기</div>
+        <div id="combatGuide">Space: 행동 | F: 씨앗 심기 | 단축키 1,2,3</div>
         <canvas id="gameCanvas"></canvas>
         
         <div id="gameOverScreen">
@@ -102,10 +99,6 @@
             <div class="item" id="item1" onclick="selectItem(1, this)"><span style="font-size:10px; color:#777;">[2]</span><br>씨앗</div>
             <div class="item" id="appleItem" onclick="selectItem(2, this)"><span style="font-size:10px; color:#777;">[3]</span><br>사과<br>(2/2)</div>
         </div>
-            <div class="item active" onclick="selectItem(0, this)">낫</div>
-            <div class="item" onclick="selectItem(1, this)">씨앗</div>
-            <div class="item" id="appleItem" onclick="selectItem(2, this)">사과<br>(2/2)</div>
-        </div>
 
         <div id="plantBtn">심기(F)</div>
         <div id="actionBtn">행동</div>
@@ -116,13 +109,9 @@
         if (fullscreenBtn) {
             fullscreenBtn.addEventListener('click', () => {
                 if (!document.fullscreenElement) {
-                    document.documentElement.requestFullscreen().catch(err => {
-                        console.log(`전체화면 전환 실패: ${err.message}`);
-                    });
+                    document.documentElement.requestFullscreen().catch(err => { console.log(err.message); });
                 } else {
-                    if (document.exitFullscreen) {
-                        document.exitFullscreen();
-                    }
+                    if (document.exitFullscreen) document.exitFullscreen();
                 }
             });
         }
@@ -148,6 +137,7 @@
 
         const keys = { w: false, a: false, s: false, d: false, ArrowUp: false, ArrowLeft: false, ArrowDown: false, ArrowRight: false };
         let particles = []; 
+        let swingTimers = {}; // 💥 플레이어들의 낫 애니메이션 타이머 저장 객체
 
         let audioCtx;
         function initAudio() {
@@ -159,50 +149,32 @@
             if (!audioCtx) return;
             const osc = audioCtx.createOscillator();
             const gainNode = audioCtx.createGain();
-            osc.connect(gainNode);
-            gainNode.connect(audioCtx.destination);
+            osc.connect(gainNode); gainNode.connect(audioCtx.destination);
             
             if (type === 'swing') {
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(800, audioCtx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.1);
-                gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
-                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+                osc.type = 'sine'; osc.frequency.setValueAtTime(800, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.1);
+                gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime); gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
                 osc.start(); osc.stop(audioCtx.currentTime + 0.1);
             } else if (type === 'hit') {
-                osc.type = 'square';
-                osc.frequency.setValueAtTime(150, audioCtx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.2);
-                gainNode.gain.setValueAtTime(0.5, audioCtx.currentTime);
-                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+                osc.type = 'square'; osc.frequency.setValueAtTime(150, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.2);
+                gainNode.gain.setValueAtTime(0.5, audioCtx.currentTime); gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
                 osc.start(); osc.stop(audioCtx.currentTime + 0.2);
             } else if (type === 'harvest') {
-                osc.type = 'triangle';
-                osc.frequency.setValueAtTime(400, audioCtx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.15);
-                gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
-                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+                osc.type = 'triangle'; osc.frequency.setValueAtTime(400, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(800, audioCtx.currentTime + 0.15);
+                gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime); gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
                 osc.start(); osc.stop(audioCtx.currentTime + 0.15);
             } else if (type === 'eat') {
-                osc.type = 'triangle';
-                osc.frequency.setValueAtTime(300, audioCtx.currentTime);
-                osc.frequency.exponentialRampToValueAtTime(600, audioCtx.currentTime + 0.1);
-                gainNode.gain.setValueAtTime(0.4, audioCtx.currentTime);
-                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+                osc.type = 'triangle'; osc.frequency.setValueAtTime(300, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(600, audioCtx.currentTime + 0.1);
+                gainNode.gain.setValueAtTime(0.4, audioCtx.currentTime); gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
                 osc.start(); osc.stop(audioCtx.currentTime + 0.1);
             }
         }
 
         function joinServer(action) {
             const nickname = document.getElementById('nicknameInput').value.trim();
-            if (!nickname) {
-                alert("게임에서 사용할 닉네임을 먼저 입력해주세요!");
-                return;
-            }
-
+            if (!nickname) { alert("게임에서 사용할 닉네임을 먼저 입력해주세요!"); return; }
             initAudio();
             let code = ''; let isHost = false;
-            
             if (action === 'create') {
                 isHost = true; isMyRoomHost = true; code = Math.floor(1000 + Math.random() * 9000).toString();
             } else {
@@ -210,7 +182,6 @@
                 if (!code) return alert('참여할 방 코드를 입력하세요!');
                 isMyRoomHost = false;
             }
-            
             socket.emit('joinRoom', { code: code, isHost: isHost, nickname: nickname });
         }
 
@@ -243,9 +214,7 @@
 
         socket.on('gameStarted', () => {
             lobby.style.display = 'none'; gameContainer.style.display = 'block';
-            applesRemaining = 2;
-            updateAppleUI();
-            resizeCanvas(); gameLoop();
+            applesRemaining = 2; updateAppleUI(); resizeCanvas(); gameLoop();
         });
 
         socket.on('gameOver', (data) => {
@@ -253,22 +222,35 @@
             const gameOverScreen = document.getElementById('gameOverScreen');
             const gameOverTitle = document.getElementById('gameOverTitle');
             const gameOverSub = document.getElementById('gameOverSub');
-
             gameOverScreen.style.display = 'block'; 
-
             if (data.winnerId === myId) {
-                gameOverTitle.innerText = "🏆 승리! 🏆";
-                gameOverTitle.style.color = "#f1c40f"; 
+                gameOverTitle.innerText = "🏆 승리! 🏆"; gameOverTitle.style.color = "#f1c40f"; 
                 gameOverSub.innerText = "가장 먼저 3킬을 달성했습니다!";
             } else {
-                gameOverTitle.innerText = "💀 패배 💀";
-                gameOverTitle.style.color = "#e74c3c"; 
+                gameOverTitle.innerText = "💀 패배 💀"; gameOverTitle.style.color = "#e74c3c"; 
                 gameOverSub.innerText = `[${data.winnerName}] 님이 먼저 3킬을 달성했습니다...`;
             }
         });
 
+        // 💥 다른 사람이 휘두른 이벤트를 받아 상대방 애니메이션 시작
         socket.on('playerSwung', (data) => {
             playSound('swing');
+            
+            // 좌표를 비교하여 휘두른 사람 찾기
+            let closestId = null;
+            let minDist = Infinity;
+            for (let id in players) {
+                let dist = Math.hypot(players[id].x - data.x, players[id].y - data.y);
+                if (dist < minDist) {
+                    minDist = dist;
+                    closestId = id;
+                }
+            }
+            // 찾은 사람이 나 자신이 아닐 경우에만 애니메이션 실행 (나는 로컬에서 즉시 실행하니까)
+            if (closestId && closestId !== myId) {
+                swingTimers[closestId] = Date.now();
+            }
+
             for(let i=0; i<8; i++) {
                 particles.push({ x: data.x, y: data.y, vx: (Math.random()-0.5)*15, vy: (Math.random()-0.5)*15, life: 1.0, color: 'white', size: 4 });
             }
@@ -283,79 +265,50 @@
 
         socket.on('seedHarvested', (data) => {
             playSound('harvest');
-            for(let i=0; i<10; i++) {
-                particles.push({ x: data.x, y: data.y, vx: (Math.random()-0.5)*12, vy: (Math.random()-0.5)*12, life: 1.0, color: '#f1c40f', size: 5 });
-            }
+            for(let i=0; i<10; i++) { particles.push({ x: data.x, y: data.y, vx: (Math.random()-0.5)*12, vy: (Math.random()-0.5)*12, life: 1.0, color: '#f1c40f', size: 5 }); }
         });
 
         socket.on('errorMsg', (msg) => { alert(msg); });
-        socket.on('stateUpdate', (data) => {
-            players = data.players;
-            seeds = data.seeds || {};
-            rocks = data.rocks || [];
-        });
+        socket.on('stateUpdate', (data) => { players = data.players; seeds = data.seeds || {}; rocks = data.rocks || []; });
 
+        // 💥 내가 공격할 때 낫 애니메이션 시작
         function handleAction() {
             if (isGameOver) return;
             if (currentItem === 0) {
                 socket.emit('attack');
+                if (myId) swingTimers[myId] = Date.now(); // 스페이스 누르는 즉시 애니메이션 타이머 기록
             } else if (currentItem === 2) {
                 eatApple();
             }
         }
 
         function eatApple() {
-            if (applesRemaining <= 0) {
-                alert("사과를 모두 다 먹었습니다!");
-                return;
-            }
-            socket.emit('eatApple');
-            applesRemaining--;
-            updateAppleUI();
-            playSound('eat');
-
+            if (applesRemaining <= 0) { alert("사과를 모두 다 먹었습니다!"); return; }
+            socket.emit('eatApple'); applesRemaining--; updateAppleUI(); playSound('eat');
             if (myId && players[myId]) {
                 let p = players[myId];
-                for(let i=0; i<12; i++) {
-                    particles.push({ x: p.x, y: p.y, vx: (Math.random()-0.5)*10, vy: (Math.random()-0.5)*10, life: 1.0, color: '#2ecc71', size: 5 });
-                }
+                for(let i=0; i<12; i++) { particles.push({ x: p.x, y: p.y, vx: (Math.random()-0.5)*10, vy: (Math.random()-0.5)*10, life: 1.0, color: '#2ecc71', size: 5 }); }
             }
         }
 
         function updateAppleUI() {
             const appleItemEl = document.getElementById('appleItem');
-            if (appleItemEl) {
-                appleItemEl.innerHTML = `사과<br>(${applesRemaining}/2)`;
-            }
+            if (appleItemEl) { appleItemEl.innerHTML = `<span style="font-size:10px; color:#777;">[3]</span><br>사과<br>(${applesRemaining}/2)`; }
         }
 
         let isPlantCooldown = false;
-
         function triggerPlant() {
             if (isGameOver) return;
-            
             if (currentItem === 1) { 
                 if (isPlantCooldown) return; 
-                
-                socket.emit('plantSeed');
-
-                isPlantCooldown = true;
+                socket.emit('plantSeed'); isPlantCooldown = true;
                 const plantBtn = document.getElementById('plantBtn');
                 plantBtn.classList.add('cooldown');
-                
-                let timeLeft = 7;
-                plantBtn.innerText = timeLeft; 
-
+                let timeLeft = 7; plantBtn.innerText = timeLeft; 
                 const cooldownInterval = setInterval(() => {
                     timeLeft -= 1;
-                    if (timeLeft > 0) {
-                        plantBtn.innerText = timeLeft;
-                    } else {
-                        clearInterval(cooldownInterval);
-                        isPlantCooldown = false;
-                        plantBtn.classList.remove('cooldown');
-                        plantBtn.innerText = '심기(F)';
-                    }
+                    if (timeLeft > 0) { plantBtn.innerText = timeLeft; }
+                    else { clearInterval(cooldownInterval); isPlantCooldown = false; plantBtn.classList.remove('cooldown'); plantBtn.innerText = '심기(F)'; }
                 }, 1000);
             }
         }
@@ -363,25 +316,11 @@
         document.getElementById('actionBtn').addEventListener('pointerdown', (e) => { e.stopPropagation(); handleAction(); });
         document.getElementById('plantBtn').addEventListener('pointerdown', (e) => { e.stopPropagation(); triggerPlant(); });
 
-       // 사과 개수 업데이트 함수 (단축키 텍스트가 지워지지 않도록 수정)
-        function updateAppleUI() {
-            const appleItemEl = document.getElementById('appleItem');
-            if (appleItemEl) {
-                appleItemEl.innerHTML = `<span style="font-size:10px; color:#777;">[3]</span><br>사과<br>(${applesRemaining}/2)`;
-            }
-        }
-
-        // --- (중략) ---
-
-        // 키보드 눌림 이벤트
         window.addEventListener('keydown', (e) => {
             if (isGameOver) return; 
-
-            // 키보드 1, 2, 3번을 누르면 해당 슬롯 선택되게 추가!
             if (e.key === '1') selectItem(0, document.getElementById('item0'));
             if (e.key === '2') selectItem(1, document.getElementById('item1'));
             if (e.key === '3') selectItem(2, document.getElementById('appleItem'));
-
             if (e.code === 'Space') handleAction();
             if (e.code === 'KeyF' || e.code === 'KeyE') triggerPlant();
             if (keys.hasOwnProperty(e.key) && !keys[e.key]) { keys[e.key] = true; sendKeyInput(); }
@@ -394,15 +333,12 @@
 
         function sendKeyInput() {
             if (!myId || isGameOver) return;
-            const up = keys.w || keys.ArrowUp; const down = keys.s || keys.ArrowDown;
-            const left = keys.a || keys.ArrowLeft; const right = keys.d || keys.ArrowRight;
-            socket.emit('keyInput', { up, down, left, right });
+            socket.emit('keyInput', { up: keys.w || keys.ArrowUp, down: keys.s || keys.ArrowDown, left: keys.a || keys.ArrowLeft, right: keys.d || keys.ArrowRight });
         }
 
         canvas.addEventListener('pointerdown', (e) => {
             if (!myId || !players[myId] || isGameOver) return;
-            const targetX = e.clientX + cameraX; const targetY = e.clientY + cameraY;
-            socket.emit('move', { x: targetX, y: targetY });
+            socket.emit('move', { x: e.clientX + cameraX, y: e.clientY + cameraY });
         });
 
         function selectItem(index, element) {
@@ -412,170 +348,109 @@
             socket.emit('selectItem', index);
         }
 
-        function resizeCanvas() { 
-            canvas.width = window.innerWidth; 
-            canvas.height = window.innerHeight; 
-        }
+        function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
         window.addEventListener('resize', resizeCanvas);
 
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-
             if (canvas.width === 0 || canvas.height === 0) resizeCanvas();
 
             if (myId && players[myId]) {
-                cameraX = players[myId].x - canvas.width / 2; 
-                cameraY = players[myId].y - canvas.height / 2;
-                cameraX = Math.max(0, Math.min(cameraX, WORLD_SIZE - canvas.width));
-                cameraY = Math.max(0, Math.min(cameraY, WORLD_SIZE - canvas.height));
+                cameraX = players[myId].x - canvas.width / 2; cameraY = players[myId].y - canvas.height / 2;
+                cameraX = Math.max(0, Math.min(cameraX, WORLD_SIZE - canvas.width)); cameraY = Math.max(0, Math.min(cameraY, WORLD_SIZE - canvas.height));
             } else {
-                cameraX = WORLD_SIZE / 2 - canvas.width / 2;
-                cameraY = WORLD_SIZE / 2 - canvas.height / 2;
+                cameraX = WORLD_SIZE / 2 - canvas.width / 2; cameraY = WORLD_SIZE / 2 - canvas.height / 2;
             }
 
-            ctx.strokeStyle = 'rgba(0, 0, 0, 0.1)';
-            ctx.lineWidth = 1;
+            ctx.strokeStyle = 'rgba(0, 0, 0, 0.1)'; ctx.lineWidth = 1;
             for (let i = 0; i <= WORLD_SIZE; i += 100) {
                 ctx.beginPath(); ctx.moveTo(i - cameraX, 0 - cameraY); ctx.lineTo(i - cameraX, WORLD_SIZE - cameraY); ctx.stroke();
                 ctx.beginPath(); ctx.moveTo(0 - cameraX, i - cameraY); ctx.lineTo(WORLD_SIZE - cameraX, i - cameraY); ctx.stroke();
             }
 
             for (let rock of rocks) {
-                ctx.fillStyle = '#7f8c8d';
-                ctx.beginPath();
-                ctx.arc(rock.x - cameraX, rock.y - cameraY, rock.radius, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.strokeStyle = '#2c3e50';
-                ctx.lineWidth = 4;
-                ctx.stroke();
+                ctx.fillStyle = '#7f8c8d'; ctx.beginPath(); ctx.arc(rock.x - cameraX, rock.y - cameraY, rock.radius, 0, Math.PI * 2); ctx.fill();
+                ctx.strokeStyle = '#2c3e50'; ctx.lineWidth = 4; ctx.stroke();
             }
 
             for (let seedId in seeds) {
-                let s = seeds[seedId];
-                ctx.fillStyle = s.grown ? '#f1c40f' : '#8e44ad'; 
-                ctx.beginPath();
-                ctx.arc(s.x - cameraX, s.y - cameraY, s.grown ? 14 : 8, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.strokeStyle = 'white';
-                ctx.lineWidth = 2;
-                ctx.stroke();
+                let s = seeds[seedId]; ctx.fillStyle = s.grown ? '#f1c40f' : '#8e44ad'; 
+                ctx.beginPath(); ctx.arc(s.x - cameraX, s.y - cameraY, s.grown ? 14 : 8, 0, Math.PI * 2); ctx.fill();
+                ctx.strokeStyle = 'white'; ctx.lineWidth = 2; ctx.stroke();
             }
 
             for (let id in players) {
                 let p = players[id];
-                const px = p.x - cameraX;
-                const py = p.y - cameraY;
+                const px = p.x - cameraX; const py = p.y - cameraY;
 
-                // 그림자
-                ctx.fillStyle = 'rgba(0,0,0,0.2)';
-                ctx.beginPath();
-                ctx.arc(px, py + 12, 18, 0, Math.PI * 2);
-                ctx.fill();
+                ctx.fillStyle = 'rgba(0,0,0,0.2)'; ctx.beginPath(); ctx.arc(px, py + 12, 18, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = p.color; ctx.beginPath();
+                ctx.roundRect ? ctx.roundRect(px - 14, py - 4, 28, 22, 6) : ctx.rect(px - 14, py - 4, 28, 22); ctx.fill();
+                ctx.fillStyle = '#34495e'; ctx.fillRect(px - 8, py - 4, 5, 12); ctx.fillRect(px + 3, py - 4, 5, 12);
+                ctx.fillStyle = '#f5d0b1'; ctx.beginPath(); ctx.arc(px, py - 12, 13, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = '#f1c40f'; ctx.beginPath(); ctx.ellipse(px, py - 20, 20, 6, 0, 0, Math.PI * 2); ctx.fill();
+                ctx.strokeStyle = '#d4ac0d'; ctx.lineWidth = 2; ctx.stroke();
+                ctx.fillStyle = '#f39c12'; ctx.beginPath(); ctx.arc(px, py - 23, 11, Math.PI, 0, false); ctx.fill();
 
-                // 농부 몸통 (멜빵바지 및 셔츠)
-                ctx.fillStyle = p.color;
-                ctx.beginPath();
-                ctx.roundRect ? ctx.roundRect(px - 14, py - 4, 28, 22, 6) : ctx.rect(px - 14, py - 4, 28, 22);
-                ctx.fill();
-
-                // 멜빵 끈
-                ctx.fillStyle = '#34495e';
-                ctx.fillRect(px - 8, py - 4, 5, 12);
-                ctx.fillRect(px + 3, py - 4, 5, 12);
-
-                // 머리 (얼굴)
-                ctx.fillStyle = '#f5d0b1';
-                ctx.beginPath();
-                ctx.arc(px, py - 12, 13, 0, Math.PI * 2);
-                ctx.fill();
-
-                // 짚모자
-                ctx.fillStyle = '#f1c40f';
-                ctx.beginPath();
-                ctx.ellipse(px, py - 20, 20, 6, 0, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.strokeStyle = '#d4ac0d';
-                ctx.lineWidth = 2;
-                ctx.stroke();
-
-                ctx.fillStyle = '#f39c12';
-                ctx.beginPath();
-                ctx.arc(px, py - 23, 11, Math.PI, 0, false);
-                ctx.fill();
-
-                // 낫을 들고 있다면 옆에 낫 그리기
+                // 💥 낫 그리기 및 휙휙 휘두르는 애니메이션 적용
                 if (p.holdingScythe) {
                     ctx.save();
-                    ctx.translate(px + 18, py);
-                    ctx.rotate(Math.PI / 4);
+                    
+                    let angle = Math.PI / 4; // 평상시 각도 (45도 대기자세)
+                    
+                    // 타이머가 작동 중이면 애니메이션 실행 (0.2초 동안)
+                    if (swingTimers[id]) {
+                        let elapsed = Date.now() - swingTimers[id];
+                        if (elapsed < 200) { 
+                            let progress = elapsed / 200;
+                            // Math.sin(0~PI)를 사용해 앞으로 부드럽게 눕혔다가 다시 제자리로 돌아오게 계산
+                            angle = (Math.PI / 4) - Math.sin(progress * Math.PI) * 2.2;
+                        }
+                    }
 
-                    // 자루
+                    // 회전축을 손잡이 아래쪽(캐릭터 손 근처)으로 맞추기
+                    ctx.translate(px + 18, py + 4);
+                    ctx.rotate(angle);
+
+                    // 낫 자루 그리기
                     ctx.strokeStyle = '#d35400';
                     ctx.lineWidth = 3;
                     ctx.beginPath();
-                    ctx.moveTo(0, 12);
-                    ctx.lineTo(0, -12);
+                    ctx.moveTo(0, 6);   // 손으로 잡는 위치
+                    ctx.lineTo(0, -18); // 낫 날이 달린 위치
                     ctx.stroke();
 
-                    // 날
+                    // 낫 날 그리기
                     ctx.strokeStyle = '#bdc3c7';
                     ctx.fillStyle = '#95a5a6';
                     ctx.lineWidth = 2;
                     ctx.beginPath();
-                    ctx.arc(0, -12, 10, 0, Math.PI, false);
+                    ctx.arc(0, -18, 10, 0, Math.PI, false); // 회전 방향 맞춰서 부채꼴 그리기
                     ctx.fill();
                     ctx.stroke();
 
                     ctx.restore();
                 }
 
-                if (id === myId) { 
-                    ctx.lineWidth = 2; 
-                    ctx.strokeStyle = 'white'; 
-                    ctx.beginPath();
-                    ctx.arc(px, py, 24, 0, Math.PI * 2);
-                    ctx.stroke();
-                }
+                if (id === myId) { ctx.lineWidth = 2; ctx.strokeStyle = 'white'; ctx.beginPath(); ctx.arc(px, py, 24, 0, Math.PI * 2); ctx.stroke(); }
                 
-                // === UI 요소들의 세로 위치 간격 조정 (안 겹치게 배치) ===
-                const hpWidth = 50; const hpHeight = 8;
-                const hpY = py - 48; // HP바 기준 높이
-                const hpX = px - (hpWidth / 2);
-
-                // HP 바 그리기
+                const hpWidth = 50; const hpHeight = 8; const hpY = py - 48; const hpX = px - (hpWidth / 2);
                 ctx.fillStyle = 'black'; ctx.fillRect(hpX, hpY, hpWidth, hpHeight);
                 ctx.fillStyle = '#e74c3c'; ctx.fillRect(hpX, hpY, (p.hp / p.maxHp) * hpWidth, hpHeight);
                 ctx.strokeStyle = 'black'; ctx.lineWidth = 1; ctx.strokeRect(hpX, hpY, hpWidth, hpHeight);
                 
-                // Kills & ATK 정보 (HP바 바로 위)
-                ctx.fillStyle = 'white';
-                ctx.font = 'bold 11px sans-serif';
-                ctx.textAlign = 'center';
+                ctx.fillStyle = 'white'; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center';
                 ctx.fillText(`Kills: ${p.kills} | ATK: ${p.attackPower}`, px, hpY - 6);
-
-                // 닉네임 (가장 위)
-                ctx.font = 'bold 13px sans-serif';
-                ctx.fillText(p.nickname, px, hpY - 20);
+                ctx.font = 'bold 13px sans-serif'; ctx.fillText(p.nickname, px, hpY - 20);
             }
 
             for (let i = particles.length - 1; i >= 0; i--) {
-                let p = particles[i];
-                p.x += p.vx; p.y += p.vy; 
-                p.life -= 0.05; 
-
-                if (p.life <= 0) {
-                    particles.splice(i, 1); 
-                } else {
-                    ctx.globalAlpha = p.life; 
-                    ctx.fillStyle = p.color;
-                    ctx.beginPath();
-                    ctx.arc(p.x - cameraX, p.y - cameraY, p.size * p.life, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.globalAlpha = 1.0; 
+                let p = particles[i]; p.x += p.vx; p.y += p.vy; p.life -= 0.05; 
+                if (p.life <= 0) { particles.splice(i, 1); } else {
+                    ctx.globalAlpha = p.life; ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x - cameraX, p.y - cameraY, p.size * p.life, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1.0; 
                 }
             }
         }
-
         function gameLoop() { draw(); requestAnimationFrame(gameLoop); }
     </script>
 </body>
